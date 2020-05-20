@@ -1,0 +1,16 @@
+{
+  "AllowedHosts": "*",
+  "AppSettings": {
+    "MyTNS": "TNSHardCodeinjson",
+    "AppENV": "3PROD",
+    "AppDBNAME": "__DBNAME__"
+  },
+  "ConnectionString": "Server=(localdb)\\\\mssqllocaldb;Database=SampleData-0B3B0919-C8B3-481C-9833-36C21776A565;Trusted_Connection=True;MultipleActiveResultSets=true",
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}

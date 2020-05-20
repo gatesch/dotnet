@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wcore-prod
+  namespace: default 
+  labels:
+    k8s-app: wcore-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: wcore-prod
+  template:
+    metadata:
+      name: wcore-prod
+      labels:
+        k8s-app: wcore-prod
+    spec:
+      containers:
+        - name: wcore-prod
+          image: 'tesch75/webcore-prod:v1'
+      terminationGracePeriodSeconds: 60
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+---		
+apiVersion: v1
+kind: Service
+metadata:
+  name:  wcore-prod
+spec:
+  selector:
+    k8s-app: wcore-prod
+  type:  NodePort
+  ports:  
+   - port:  10803
+     targetPort:  80
+     nodePort:  31803

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wcore-uat
+  namespace: default 
+  labels:
+    k8s-app: wcore-uat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: wcore-uat
+  template:
+    metadata:
+      name: wcore-uat
+      labels:
+        k8s-app: wcore-uat
+    spec:
+      containers:
+        - name: wcore-uat
+          image: 'tesch75/webcore-uat:v1'
+      terminationGracePeriodSeconds: 60
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+---		
+apiVersion: v1
+kind: Service
+metadata:
+  name:  wcore-uat
+spec:
+  selector:
+    k8s-app: wcore-uat
+  type:  NodePort
+  ports:  
+   - port:  10802
+     targetPort:  80
+     nodePort:  31802

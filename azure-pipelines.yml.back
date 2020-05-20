@@ -1,0 +1,139 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+  branches:
+    include:
+    - master 
+  paths:
+    include:
+    - MPTDevOpsWebCore
+
+
+pool:
+  name: "Default"
+#  demands:
+#  - Agent.os -equals Linux
+#  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  solution: '**/*.sln'
+  projects: '**/MPTDevOpsWebCore.csproj'
+  nugetVersion: '5.2.0' # https://dist.nuget.org/tools.json
+  projectname: 'MPTDevOpsWebCore'
+#  imageName: 'pipelines-javascript-docker'
+
+#  $(imageName)
+
+steps:
+#- script: dotnet build --configuration $(buildConfiguration)
+#  displayName: 'dotnet build $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: T1 - Dotnet Core Build
+  inputs:
+    command: build
+    projects: $(projects)
+    arguments: '--configuration $(buildConfiguration)' 
+
+- task: DotNetCoreCLI@2
+  displayName: T2.1 - Dotnet Core Tests (Unit Tests) - Open Test Runs for Test Results. Get Test RunID at bottom of this task logs.
+  inputs:
+    command: test
+    projects: '**/*Tests/MPTDevOpsWebCore*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
+
+- task: DotNetCoreCLI@2
+  displayName: T2.2 - Dotnet publish and make zip file.
+  inputs:
+    command: publish
+    publishWebProjects: True
+    arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: True
+
+# this code takes all the files in $(Build.ArtifactStagingDirectory) and uploads them as an artifact of your build.
+- task: PublishBuildArtifacts@1
+  displayName: T2.3 - Publish dotnet core web project artifact.
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)' 
+    artifactName: $(projectname)Artifacts
+ 
+# ===== finished dotnet part ============
+
+## Skip nT3-0 but note that run step from linux agent console requires login. 
+##  Docker Login step not need when PrivateCR Service connection registered with username and password (testuser / testpassword)
+#- task: Bash@3
+#  displayName: nT3-0 - Run Docker login
+#  inputs:
+#    targetType: 'inline'
+#    script: |
+#      cat /home/agent/mptcrpw.txt | docker login https://k8s-master:443/v1/ --username testuser --password-stdin
+
+- task: Docker@2
+  displayName: nT3-1 - Build Docker image, Tag and auto Push image to k8s-master Private Container Registry.
+  inputs:
+    repository: 'webcore'
+    command: 'buildAndPush'
+    containerRegistry: 'dockerhub'
+    Dockerfile: '**/MPTDevOpsWebCore/Dockerfile'
+    tags: |
+      $(Build.BuildId)
+      latest
+
+
+- task: Bash@3
+  displayName: nT3-2 - Run Docker clean up intermediate images on Agent after build done.
+  inputs:
+    targetType: 'inline'
+    script: |
+      docker rmi $(docker images -f 'dangling=true' -q)
+#  continueOnError: true
+
+# ===== finished docker images build, tag and push part ============
+
+
+
+
+
+#- task: Kubernetes@1
+#  displayName: (Not Verified Task) T4 - Get Nodes from K8s Cluster [MPT-146]
+#  inputs:
+#    connectionType: 'None'
+#    namespace: 'default'
+#    command: 'get'
+#    arguments: 'nodes -o=wide'
+#    secretType: 'dockerRegistry'
+#    containerRegistryType: 'Azure Container Registry'
+#    outputFormat: 'yaml'
+
+    
+#- task: Kubernetes@1
+#  displayName: (Not Verified Task) T5 - Get Nodes from K8s Cluster YAML Format
+#  inputs:
+#    connectionType: 'None'
+#    command: 'get'
+#    arguments: 'nodes -o=wide'
+#    secretType: 'generic'
+#    forceUpdate: false
+#    outputFormat: 'yaml'
+
+#- task: Kubernetes@1
+#  displayName: (Not Verified Task) T7 - Check new Node from K8s Cluster 
+#  inputs:
+#    connectionType: 'None'
+#    namespace: 'default'
+#    command: 'get'
+#    arguments: 'nodes -o=wide'
+#    secretType: 'dockerRegistry'
+#    containerRegistryType: 'Azure Container Registry'
+#    outputFormat: 'yaml'
+
+#- task: DotNetCoreCLI@2
+#  displayName: T8 - Publish dotnet core web project artifact. 
+#  inputs:
+#    command: 'publish'
+#    publishWebProjects: true

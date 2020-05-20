@@ -1,0 +1,32 @@
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.0-buster-slim AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/core/sdk:3.0-buster AS build
+WORKDIR /src
+RUN pwd 
+RUN ls -al 
+RUN echo "1 COPY ["MPTDevOpsWebCore/MPTDevOpsWebCore.csproj", "MPTDevOpsWebCore/"]"
+COPY ["./MPTDevOpsWebCore/MPTDevOpsWebCore.csproj", "MPTDevOpsWebCore/"]
+RUN dotnet restore "MPTDevOpsWebCore/MPTDevOpsWebCore.csproj"
+
+RUN echo "2 COPY . MPTDevOpsWebCore/"
+
+#COPY . .
+COPY . MPTDevOpsWebCore/
+WORKDIR "/src/MPTDevOpsWebCore"
+RUN dotnet build "MPTDevOpsWebCore.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "MPTDevOpsWebCore.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "MPTDevOpsWebCore.dll"]
+
+
+#docker build . -f MPTDevOpsWebCore/Dockerfile
+##- script: dotnet build --configuration $(buildConfiguration)
+#  displayName: 'dotnet build $(buildConfiguration)'

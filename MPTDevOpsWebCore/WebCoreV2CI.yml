@@ -1,0 +1,223 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+  branches:
+    include:
+    - master 
+  paths:
+    include:
+    - MPTDevOpsWebCore
+
+
+pool:
+  name: "MPTBuildPool"
+  demands:
+  - Agent.os -equals Linux
+#  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  solution: '**/*.sln'
+  projects: '**/MPTDevOpsWebCore.csproj'
+  nugetVersion: '5.2.0' # https://dist.nuget.org/tools.json
+  projectname: 'MPTDevOpsWebCore'
+#  imageName: 'pipelines-javascript-docker'
+
+#  $(imageName)
+
+steps:
+#- script: dotnet build --configuration $(buildConfiguration)
+#  displayName: 'dotnet build $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: T1 - Dotnet Core Build
+  inputs:
+    command: build
+    projects: $(projects)
+    arguments: '--configuration $(buildConfiguration)' 
+
+- task: DotNetCoreCLI@2
+  displayName: T2 - Dotnet Core Tests (Unit Tests)
+  inputs:
+    command: test
+    projects: '**/*Tests/MPTDevOpsWebCore*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
+
+# ===== finished dotnet part ============
+##### 
+##### 
+##### - task: Bash@3
+#####   displayName: nT3-0 - Run Docker login
+#####   inputs:
+#####     targetType: 'inline'
+#####     script: |
+#####       cat /home/agent/mptcrpw.txt | docker login https://k8s-master:443/v1/ --username testuser --password-stdin
+##### 
+##### - task: Docker@2
+#####   displayName: nT3-1 - Build, Tag and Push auto to k8s-master CR
+#####   inputs:
+#####     repository: 'MPTDevOpsWebCore'
+#####     command: 'buildAndPush'
+#####     containerRegistry: 'PrivateCR'
+#####     Dockerfile: '**/MPTDevOpsWebCore/Dockerfile'
+#####     tags: |
+#####       $(Build.BuildId)
+#####       latest
+##### 
+#####  
+#####  
+##### ###- task: Bash@3
+##### ###  displayName: nT3-2 - Run Docker Push to k8s-masterCR
+##### ###  inputs:
+##### ###    targetType: 'inline'
+##### ###    script: |
+##### ###      docker push
+##### ###
+##### #  continueOnError: true
+##### 
+##### 
+##### #- task: Docker@2
+##### #  displayName: ACR T3 - Build and Push to Azure CR
+##### #  inputs:
+##### #    containerRegistry: 'DLGTACR'
+##### #    repository: 'MPT'
+##### #    command: 'buildAndPush'
+##### #    Dockerfile: '**/MPTDevOpsWebCore/Dockerfile'
+##### #    arguments: --rm # task not support additional arguments
+##### 
+##### # break down build and push to 2 task steps
+##### #- task: Docker@2
+##### #  displayName: ACR T3-1 Run Docker Build on Agent
+##### #  inputs:
+##### #    containerRegistry: 'DLGTACR'
+##### #    repository: 'MPT'
+##### #    command: 'build'
+##### #    Dockerfile: '**/Dockerfile'
+##### #  --rm = delete immediate images after build to aviod <none> images 
+##### 
+##### #- task: Docker@2
+##### #  displayName: ACR T3-2 Run Docker push on Agent
+##### #  inputs:
+##### #    containerRegistry: 'DLGTACR'
+##### #    repository: 'MPT'
+##### #    command: 'push'
+##### # end break down block
+#####  
+##### 
+##### 
+##### - task: Bash@3
+#####   displayName: nT3-2 - Run Docker clean up intermediate images on Agent after build
+#####   inputs:
+#####     targetType: 'inline'
+#####     script: |
+#####       docker rmi $(docker images -f 'dangling=true' -q)
+##### #  continueOnError: true
+##### 
+##### #smaple memo path hierachy for build 
+##### #docker build . -f MPTDevOpsWebCore/Dockerfile
+##### #- script: dotnet build --configuration $(buildConfiguration)
+##### #  displayName: 'dotnet build $(buildConfiguration)'
+##### 
+##### 
+##### # ===== finished docker images build, tag and push part ============
+##### 
+##### - task: Kubernetes@1
+#####   displayName: (Not Verified Task) T4 - Get Nodes from K8s Cluster [MPT-146]
+#####   inputs:
+#####     connectionType: 'None'
+#####     namespace: 'default'
+#####     command: 'get'
+#####     arguments: 'nodes -o=wide'
+#####     secretType: 'dockerRegistry'
+#####     containerRegistryType: 'Azure Container Registry'
+#####     outputFormat: 'yaml'
+##### 
+#####     
+##### - task: Kubernetes@1
+#####   displayName: (Not Verified Task) T5 - Get Nodes from K8s Cluster YAML Format
+#####   inputs:
+#####     connectionType: 'None'
+#####     command: 'get'
+#####     arguments: 'nodes -o=wide'
+#####     secretType: 'generic'
+#####     forceUpdate: false
+#####     outputFormat: 'yaml'
+##### 
+##### 
+##### 
+##### # kubectl run hazelcast --image=hazelcast --port=5701
+##### # kubectl create 
+##### #- task: Kubernetes@1
+##### #  displayName: T6-1 - Agent --> K8s Run nginx:80
+##### #  inputs:
+##### #    connectionType: 'None'
+##### #    command: 'create'
+##### #    arguments: 'nginx --image=nginx --port=80'
+##### #    secretType: 'dockerRegistry'
+##### #    containerRegistryType: 'Azure Container Registry'
+##### 
+##### ##- task: Kubernetes@1
+##### ##  displayName: T6.1 - Agent --> K8s Create deployment nginx
+##### ##  inputs:
+##### ##    connectionType: 'None'
+##### ##    command: 'create'
+##### ##    arguments: 'deployment nginx --image=k8s-master:5000/nginx:latest' 
+##### ##    secretType: 'dockerRegistry'
+##### ##    containerRegistryType: 'Azure Container Registry'
+##### ##    
+##### ##- task: Kubernetes@1
+##### ##  displayName: T6.2 - Agent --> K8s Create Service nginx on Port:80
+##### ##  inputs:
+##### ##    connectionType: 'None'
+##### ##    command: 'create'
+##### ##    arguments: 'service nodeport nginx --tcp=80:80'
+##### ##    secretType: 'dockerRegistry'
+##### ##    containerRegistryType: 'Azure Container Registry'
+##### 
+##### 
+##### 
+##### #kubectl create service nodeport nginx --tcp=80:80 
+#####  
+##### #kubectl expose deployment/my-nginx 
+##### #kubectl expose pod nginx  --type=LoadBalancer --port=80 --container-port=8080
+##### #- task: Kubernetes@1
+##### #  displayName: T6.3 - Agent --> K8s Expose nginx on Port:80
+##### #  inputs:
+##### #    connectionType: 'None'
+##### #    command: 'expose'
+##### #    arguments: 'pod nginx --type=LoadBalancer --port=80'
+##### #    secretType: 'dockerRegistry'
+##### #    containerRegistryType: 'Azure Container Registry'
+##### 
+##### 
+##### 
+##### - task: Kubernetes@1
+#####   displayName: (Not Verified Task) T7 - Check new Node from K8s Cluster 
+#####   inputs:
+#####     connectionType: 'None'
+#####     namespace: 'default'
+#####     command: 'get'
+#####     arguments: 'nodes -o=wide'
+#####     secretType: 'dockerRegistry'
+#####     containerRegistryType: 'Azure Container Registry'
+#####     outputFormat: 'yaml'
+##### 
+##### #- task: DotNetCoreCLI@2
+##### #  displayName: T8 - Publish dotnet core web project artifact. 
+##### #  inputs:
+##### #    command: 'publish'
+##### #    publishWebProjects: true
+##### 
+##### 
+##### - task: PublishPipelineArtifact@1
+#####   displayName: T8.1 - Publish dotnet core web project artifact.
+#####   inputs:
+#####     path: $(System.DefaultWorkingDirectory)/$(projectname)
+#####     artifact: $(projectname)Artifacts
+##### 
+##### 
+#####     #disable code line

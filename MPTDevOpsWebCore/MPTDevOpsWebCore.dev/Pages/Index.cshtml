@@ -1,0 +1,34 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "mptdevopswebcore Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome mptdevopswebcore</h1>
+    <p>
+        App Setting<br />
+        review these infomation to validate deployment to contaniers.
+        @if (ViewBag.AppEnv != null)
+        {
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : AppENV<br />  @ViewBag.AppEnv<br /> *read from json // replace by release stage name where web deployed.
+            </div>
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : AppDBNAME<br />    @ViewBag.DBName<br /> *sent from release env replace existing in json. / developer see local / runtime use newer value.
+            </div>
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : MyTNS<br />    @ViewBag.MyTNS<br /> *read from json / developer can see this at code.
+            </div>
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : Connection String<br />    @ViewBag.ConStr <br />* this section is static content.
+            </div>
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : ExtraSetting<br />   ---/@ViewBag.ExtraSetting/--- <br /> *sent from release env without in config.json / developer cannot see this value.
+            </div>
+            <div class="alert alert-success" style="margin-top:20px">
+                Key : CICDRef and Deployment Template<br />   ---/@ViewBag.CICDRef/--- ---/@ViewBag.DeployTemplateFilename/---<br />*runtime update for trace kuber deploy tempate, build and release id. / developer cannot see this.
+            </div>
+        }
+    </p>
+</div>

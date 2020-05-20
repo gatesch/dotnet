@@ -1,0 +1,7 @@
+## test build
+trigger:
+- master
+
+steps:
+
+- checkout: self
